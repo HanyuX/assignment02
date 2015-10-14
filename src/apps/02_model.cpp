@@ -231,9 +231,10 @@ void subdivide_bezier_decasteljau(Mesh *bezier) {
             vec3f point12 = (point1 + point2)/2;
             vec3f point23 = (point2 + point3)/2;
             vec3f point13 = (point12+point23)/2;
-            tempSpl.push_back(vec4i(tempPos.size()  ,tempPos.size()+1,tempPos.size()+2,tempPos.size()+3));
-            tempSpl.push_back(vec4i(tempPos.size()+3,tempPos.size()+4,tempPos.size()+5,tempPos.size()+6));
-            tempPos.push_back(pos[splines[j].x]);
+            if(!(tempPos.size() != 0 && tempPos[tempPos.size()-1] == pos[splines[j].x]))
+               tempPos.push_back(pos[splines[j].x]);
+            tempSpl.push_back(vec4i(tempPos.size()-1  ,tempPos.size(),tempPos.size()+1,tempPos.size()+2));
+            tempSpl.push_back(vec4i(tempPos.size()+2,tempPos.size()+3,tempPos.size()+4,tempPos.size()+5));
             tempPos.push_back(point1);
             tempPos.push_back(point12);
             tempPos.push_back(point13);
@@ -281,9 +282,7 @@ void subdivide_catmullclark(Mesh* subdiv) {
     // allocate a working Mesh copied from the subdiv
     auto mesh = new Mesh(*subdiv);
     
-    image3f image = read_png("/Users/xuehanyu/Desktop/texture.png",false);
-    int width = image.width(), height = image.height();
-    // foreach level
+   // foreach level
     for(auto l : range(subdiv->subdivision_catmullclark_level)) {
         // make empty pos and quad arrays
         auto pos = vector<vec3f>();
@@ -356,14 +355,20 @@ void subdivide_catmullclark(Mesh* subdiv) {
         vector<int> count(pos.size(),0);
         vector<vec3f> avePoint(pos.size(),vec3f(0,0,0));
         for(auto qua : quad){
-            vec3f newPoint = (pos[qua.x] + pos[qua.y] + pos[qua.z] + pos[qua.w]) /4.0; //
-            avePoint[qua.x] += newPoint + 10*normalize(avePoint[qua.x]-subdiv->frame.o) * (image.at(fabs(avePoint[qua.x].x),fabs(avePoint[qua.x].y)).x*0.3 + image.at(fabs(avePoint[qua.x].x),fabs(avePoint[qua.x].y)).y * 0.59 + image.at(fabs(avePoint[qua.x].x),fabs(avePoint[qua.x].y)).z * 0.11);
+              vec3f newPoint = (pos[qua.x] + pos[qua.y] + pos[qua.z] + pos[qua.w]) /4.0;
+
+//            vec3f color1 = image.at(abs(avePoint[qua.x].x-subdiv->frame.o.x)*100,abs(avePoint[qua.x].y-subdiv->frame.o.y)*100),
+//                    color2 = image.at(fabs(avePoint[qua.y].x-subdiv->frame.o.x)*100,fabs(avePoint[qua.y].y-subdiv->frame.o.y)*100),
+//                        color3 = image.at(fabs(avePoint[qua.z].x-subdiv->frame.o.x)*100,fabs(avePoint[qua.z].y-subdiv->frame.o.y)*100),
+//                            color4 = image.at(fabs(avePoint[qua.w].x-subdiv->frame.o.x)*100,fabs(avePoint[qua.w].y-subdiv->frame.o.y)*100);
+
+            avePoint[qua.x] += newPoint;// + 0.5*normalize(avePoint[qua.x]-subdiv->frame.o) * (color1.x*0.3 + color1.y * 0.59 + color1.z * 0.11);
             ++count[qua.x];
-            avePoint[qua.y] += newPoint + 10*normalize(avePoint[qua.y]-subdiv->frame.o) * (image.at(fabs(avePoint[qua.y].x),fabs(avePoint[qua.y].y)).x*0.3 + image.at(fabs(avePoint[qua.y].x),fabs(avePoint[qua.y].y)).y * 0.59 + image.at(fabs(avePoint[qua.y].x),fabs(avePoint[qua.y].y)).z * 0.11);
+            avePoint[qua.y] += newPoint;// + 0.5*normalize(avePoint[qua.y]-subdiv->frame.o) * (color2.x*0.3 + color2.y * 0.59 + color2.z * 0.11);
             ++count[qua.y];
-            avePoint[qua.z] += newPoint + 10*normalize(avePoint[qua.z]-subdiv->frame.o) * (image.at(fabs(avePoint[qua.z].x),fabs(avePoint[qua.z].y)).x*0.3 + image.at(fabs(avePoint[qua.z].x),fabs(avePoint[qua.z].y)).y * 0.59 + image.at(fabs(avePoint[qua.z].x),fabs(avePoint[qua.z].y)).z * 0.11);
+            avePoint[qua.z] += newPoint;// + 0.5*normalize(avePoint[qua.z]-subdiv->frame.o) * (color3.x*0.3 + color3.y * 0.59 + color3.z * 0.11);
             ++count[qua.z];
-            avePoint[qua.w] += newPoint + 10*normalize(avePoint[qua.w]-subdiv->frame.o) * (image.at(fabs(avePoint[qua.w].x),fabs(avePoint[qua.w].y)).x*0.3 + image.at(fabs(avePoint[qua.w].x),fabs(avePoint[qua.w].y)).y * 0.59 + image.at(fabs(avePoint[qua.w].x),fabs(avePoint[qua.w].y)).z * 0.11);
+            avePoint[qua.w] += newPoint;// + 0.5*normalize(avePoint[qua.w]-subdiv->frame.o) * (color4.x*0.3 + color4.y * 0.59 + color4.z * 0.11);
             ++count[qua.w];
         }
         for(int i = 0 ; i < avePoint.size() ; ++i)
@@ -496,6 +501,32 @@ void subdivide_surface(Surface* surface) {
     surface->_display_mesh = mesh;
 }
 
+//displacement mapping
+void displacement_mapping( Surface* surf, image3f& png )
+{
+    float width = png.width(), height = png.height();
+    vector<vec3f> pos = surf->_display_mesh->pos; if(pos.size() == 0)   return;
+    float x_min = pos[0].x, x_max  = pos[0].x, y_min = pos[0].y, y_max = pos[0].y;
+    for(auto i : pos){
+        x_min = x_min - i.x < 0 ? x_min : i.x;
+        x_max = x_max - i.x > 0 ? x_max : i.x;
+        y_min = y_min - i.y < 0 ? y_min : i.y;
+        y_max = y_max - i.x > 0 ? y_max : i.y;
+    }
+    if(x_min == x_max) x_max = x_min+1;
+    if(y_min == y_max)  y_max = y_min+1;
+    for(int i = 0 ; i < pos.size() ; ++i){
+       vec3f newPos((pos[i].x-x_min) / (x_max-x_min) * width , (pos[i].y-y_min) / (y_max-y_min) * height, pos[i].z);
+       newPos.x = newPos.x > width-1 ? width-1 : newPos.x;
+       newPos.x = newPos.x < 1 ? 1 : newPos.x;
+       newPos.y = newPos.y > height-1 ? height-1 : newPos.y;
+       newPos.y = newPos.y < 1 ? 1 : newPos.y;
+       vec3f color = png.at((int)newPos.x,(int)newPos.y);
+       pos[i] = pos[i] + color*surf->_display_mesh->norm[i];
+    }
+    surf->_display_mesh->pos = pos;
+}
+
 void subdivide(Scene* scene) {
     for(auto mesh : scene->meshes) {
         if(mesh->subdivision_catmullclark_level) subdivide_catmullclark(mesh);
@@ -504,7 +535,16 @@ void subdivide(Scene* scene) {
     for(auto surface : scene->surfaces) {
         subdivide_surface(surface);
     }
+
+    image3f png = read_png("/Users/xuehanyu/Desktop/texture.png", false);
+    bool doMapping = true;
+    for(auto surface : scene->surfaces)
+    {
+        if(doMapping)
+            displacement_mapping(surface, png);
+    }
 }
+
 
 
 // main function

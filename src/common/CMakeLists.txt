@@ -15,6 +15,7 @@ set(common_srcs
                                         # punchout
                                         # punchout
     vmath.h                             # punchout
+    texture.png
 )
 
 set(ext_lodepng_srcs
