@@ -357,18 +357,13 @@ void subdivide_catmullclark(Mesh* subdiv) {
         for(auto qua : quad){
               vec3f newPoint = (pos[qua.x] + pos[qua.y] + pos[qua.z] + pos[qua.w]) /4.0;
 
-//            vec3f color1 = image.at(abs(avePoint[qua.x].x-subdiv->frame.o.x)*100,abs(avePoint[qua.x].y-subdiv->frame.o.y)*100),
-//                    color2 = image.at(fabs(avePoint[qua.y].x-subdiv->frame.o.x)*100,fabs(avePoint[qua.y].y-subdiv->frame.o.y)*100),
-//                        color3 = image.at(fabs(avePoint[qua.z].x-subdiv->frame.o.x)*100,fabs(avePoint[qua.z].y-subdiv->frame.o.y)*100),
-//                            color4 = image.at(fabs(avePoint[qua.w].x-subdiv->frame.o.x)*100,fabs(avePoint[qua.w].y-subdiv->frame.o.y)*100);
-
-            avePoint[qua.x] += newPoint;// + 0.5*normalize(avePoint[qua.x]-subdiv->frame.o) * (color1.x*0.3 + color1.y * 0.59 + color1.z * 0.11);
+            avePoint[qua.x] += newPoint;
             ++count[qua.x];
-            avePoint[qua.y] += newPoint;// + 0.5*normalize(avePoint[qua.y]-subdiv->frame.o) * (color2.x*0.3 + color2.y * 0.59 + color2.z * 0.11);
+            avePoint[qua.y] += newPoint;
             ++count[qua.y];
-            avePoint[qua.z] += newPoint;// + 0.5*normalize(avePoint[qua.z]-subdiv->frame.o) * (color3.x*0.3 + color3.y * 0.59 + color3.z * 0.11);
+            avePoint[qua.z] += newPoint;
             ++count[qua.z];
-            avePoint[qua.w] += newPoint;// + 0.5*normalize(avePoint[qua.w]-subdiv->frame.o) * (color4.x*0.3 + color4.y * 0.59 + color4.z * 0.11);
+            avePoint[qua.w] += newPoint;
             ++count[qua.w];
         }
         for(int i = 0 ; i < avePoint.size() ; ++i)
@@ -462,15 +457,15 @@ void subdivide_surface(Surface* surface) {
         // compute how much to subdivide
         int row = 1 << (surface->subdivision_level+1), column = row*2;
 
-        mesh->pos.push_back(vec3f(surface->frame.o.x,surface->frame.o.y,surface->frame.o.z+radius));
+        mesh->pos.push_back(vec3f(0,0,radius));
         for(int i = 1 ; i < row; ++i)
             for(int j = 0 ; j < column ; ++j){
                 double phi = 2*pi/column * j;
                 double theta = pi/row * i;
-                vec3f point(radius * cos(phi) * sin(theta) + surface->frame.o.x, radius * sin(phi) * sin(theta) + surface->frame.o.y, radius * cos(theta) + surface->frame.o.z);
+                vec3f point(radius * cos(phi) * sin(theta) , radius * sin(phi) * sin(theta) , radius * cos(theta));
                 mesh->pos.push_back(point);
             }
-        mesh->pos.push_back(vec3f(surface->frame.o.x,surface->frame.o.y,surface->frame.o.z-radius));
+        mesh->pos.push_back(vec3f(0,0,-radius));
 
 
         // foreach column
@@ -522,9 +517,12 @@ void displacement_mapping( Surface* surf, image3f& png )
        newPos.y = newPos.y > height-1 ? height-1 : newPos.y;
        newPos.y = newPos.y < 1 ? 1 : newPos.y;
        vec3f color = png.at((int)newPos.x,(int)newPos.y);
-       pos[i] = pos[i] + color*surf->_display_mesh->norm[i];
+       pos[i] = pos[i] + 0.3*color*surf->_display_mesh->norm[i];
     }
+
     surf->_display_mesh->pos = pos;
+    if(surf->subdivision_smooth) smooth_normals(surf->_display_mesh);
+    else facet_normals(surf->_display_mesh);
 }
 
 void subdivide(Scene* scene) {
@@ -536,8 +534,8 @@ void subdivide(Scene* scene) {
         subdivide_surface(surface);
     }
 
-    image3f png = read_png("/Users/xuehanyu/Desktop/texture.png", false);
-    bool doMapping = true;
+    image3f png = read_png("texture.png", true);
+    bool doMapping = false;
     for(auto surface : scene->surfaces)
     {
         if(doMapping)
